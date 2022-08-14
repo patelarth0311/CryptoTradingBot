@@ -10,7 +10,7 @@ import ccxt
 from pprint import pprint
 import pandas as pd
 import matplotlib.pyplot as plt
-
+import os
 
 ### WORK IN PROGRESS
 
@@ -19,16 +19,16 @@ def engage_binance_client():
     binanceUS = 'binanceus'
     exchange_class = getattr(ccxt, binanceUS)
     exchange = exchange_class({
-    'apiKey': 'qZd0TVwy6nCgxWvRiYoEoOEG9N2lEthcTv7Zbc8xjegLYIg94pDdGcKfoYXibYge',
-    'secret': 'uDtR7qHQNooW2OcdITnhj6DWGN78ErLoOYRUP2Fc2YqhG7UuMlnbJ7XOdhjg8jQJ',
+    'apiKey': os.getenv('API_KEY'),
+    'secret': os.getenv('API_SECRET'),
     })
     return exchange
 
 client = engage_binance_client()
 
-def create_ohlcv_df():
+def create_ohlcv_df(timeframe: str):
     
-    candles = client.fetch_index_ohlcv('BTCUSDT', timeframe='4h')
+    candles = client.fetch_index_ohlcv('BTCUSDT', timeframe=timeframe)
 # https://github.com/ccxt/ccxt/blob/19e13b5867311107ad119ad1f35d90fd2ffc6cc3/python/ccxt/base/exchange.py
     for i in candles:
         del i[-1]
@@ -67,11 +67,33 @@ def ema_200(df):
     ema_200_df['ema_200'] = df['close'].ewm(span=200,adjust=False).mean()
     return ema_200_df
 
-def aggregate_df():
-    df = create_ohlcv_df()
+#combining df
+def aggregate_df(timeframe: str):
+    df = create_ohlcv_df(timeframe)
     df = df.join(other = [rsi(df),macd(df),ema_200(df)], how = "inner")
 
     return df
+
+# Take a long when EMA fast is above EMA slow and both are below the zero line
+# and when the candle closes above 200 EMA 
+def check_buying_conditions(timeframe: str):
+    latest_timeframe_entry_df = aggregate_df(timeframe).tail(1)
+    below_zero = latest_timeframe_entry_df.macd[0] < 0 and latest_timeframe_entry_df.signal[0]  < 0
+    macd_greater = latest_timeframe_entry_df.macd[0] > latest_timeframe_entry_df.signal[0] 
+    closed_above_ema_200 = latest_timeframe_entry_df.close[0] > latest_timeframe_entry_df.ema_200[0]
+    rsi_oversold = latest_timeframe_entry_df.rsi[0] < 30
+    print(latest_timeframe_entry_df)
+    return below_zero and macd_greater and closed_above_ema_200 and rsi_oversold
+
+def take_order():
+
+    check_4hr_timeframe = check_buying_conditions('4h')
+
+    #check if conditions are met in the 2hr timeframe if not in 4hr
+    check_2hr_timeframe = check_buying_conditions('2h')
+    
+
+
 
 #df['MACD'].plot()
 #df['histogram'].plot()
@@ -80,21 +102,3 @@ def aggregate_df():
 #df['ema_200'].plot()
 #df['rsi'].plot()
 #plt.show()
-
-
-# Take a long when EMA fast is above EMA slow and both are below the zero line
-# and when the candle closes above 200 EMA 
-
-def check_buying_conditions():
-    latest_timeframe_entry_df = aggregate_df().tail(1)
-
-    below_zero = latest_timeframe_entry_df.macd[0] < 0 and latest_timeframe_entry_df.signal[0]  < 0
-    macd_greater = latest_timeframe_entry_df.macd[0] > latest_timeframe_entry_df.signal[0] 
-    closed_above_ema_200 = latest_timeframe_entry_df.close[0] > latest_timeframe_entry_df.ema_200[0]
-    rsi_oversold = latest_timeframe_entry_df.rsi[0] < 30
-
-
-    if below_zero and macd_greater and closed_above_ema_200 and rsi_oversold:
-        print("BUY")
-
-    ## else look at the 2 hr timeframe maybe
