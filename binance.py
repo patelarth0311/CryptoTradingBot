@@ -82,15 +82,21 @@ def check_buying_conditions(timeframe: str):
     macd_greater = latest_timeframe_entry_df.macd[0] > latest_timeframe_entry_df.signal[0] 
     closed_above_ema_200 = latest_timeframe_entry_df.close[0] > latest_timeframe_entry_df.ema_200[0]
     rsi_oversold = latest_timeframe_entry_df.rsi[0] < 30
-    print(latest_timeframe_entry_df)
-    return below_zero and macd_greater and closed_above_ema_200 and rsi_oversold
+    return latest_timeframe_entry_df, (below_zero and macd_greater and closed_above_ema_200 and rsi_oversold)
 
 def take_order():
 
-    check_4hr_timeframe = check_buying_conditions('4h')
+    latest_timeframe_entry_df, check_4hr_timeframe = check_buying_conditions('4h')
+    latest_timeframe_entry_df, check_2hr_timeframe = check_buying_conditions('2h')
 
-    #check if conditions are met in the 2hr timeframe if not in 4hr
-    check_2hr_timeframe = check_buying_conditions('2h')
+    params = {
+         'stopPrice' : latest_timeframe_entry_df.close[0] * .90
+    }
+    
+    if check_4hr_timeframe or check_2hr_timeframe:
+        client.create_order('BTCUSDT', 'STOP_LOSS', 'BUY', amount = (client.fetch_balance() * .20), params = params)
+
+    
     
 
 
