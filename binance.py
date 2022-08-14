@@ -11,17 +11,23 @@ from pprint import pprint
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
+from dotenv import load_dotenv
+
+
 
 ### WORK IN PROGRESS
 
 
 def engage_binance_client():
+    load_dotenv()
     binanceUS = 'binanceus'
     exchange_class = getattr(ccxt, binanceUS)
     exchange = exchange_class({
     'apiKey': os.getenv('API_KEY'),
-    'secret': os.getenv('API_SECRET'),
+    'secret': os.getenv('API_SECRET')
     })
+
+    
     return exchange
 
 client = engage_binance_client()
@@ -84,20 +90,36 @@ def check_buying_conditions(timeframe: str):
     rsi_oversold = latest_timeframe_entry_df.rsi[0] < 30
     return latest_timeframe_entry_df, (below_zero and macd_greater and closed_above_ema_200 and rsi_oversold)
 
+
+def get_balance():
+    balance = 0
+    for x in client.fetch_balance()['info']['balances']:
+        if (x['asset'] == 'USDT'):
+            balance = (x['free'])
+            break
+            
+    return balance
+
 def take_order():
 
     latest_timeframe_entry_df, check_4hr_timeframe = check_buying_conditions('4h')
     latest_timeframe_entry_df, check_2hr_timeframe = check_buying_conditions('2h')
 
+
+
+    balance = float(get_balance())
+    stopPrice = latest_timeframe_entry_df.close[0] * .90
+    quantity = balance * .20
     params = {
-         'stopPrice' : latest_timeframe_entry_df.close[0] * .90
+        'stopPrice' : stopPrice,
     }
     
-    if check_4hr_timeframe or check_2hr_timeframe:
-        client.create_order('BTCUSDT', 'STOP_LOSS', 'BUY', amount = (client.fetch_balance() * .20), params = params)
+    
 
-    
-    
+    if  check_4hr_timeframe or check_2hr_timeframe:
+        client.create_order( symbol = 'BTCUSDT',  type = 'STOP_LOSS_LIMIT',  side = 'buy', price = latest_timeframe_entry_df.close[0], amount = (balance * .20), params = params)
+
+
 
 
 
