@@ -1,10 +1,4 @@
 from ast import ExceptHandler
-import urllib.parse
-import hashlib
-import hmac
-import base64
-import requests
-import time
 from enum import Enum
 import ccxt
 from pprint import pprint
