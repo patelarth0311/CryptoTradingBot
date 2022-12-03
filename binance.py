@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 
 
-### WORK IN PROGRESS
+### WORK IN PROGRESS edit
 
 
 def engage_binance_client() -> ccxt.binanceus.binanceus:
