@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 
 
-### WORK IN PROGRESS
+### WORK IN PROGRESS EDITED
 
 
 def engage_binance_client():
